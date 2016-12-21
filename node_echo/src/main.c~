@@ -1,0 +1,83 @@
+#include "main.h"
+
+
+void* echo(void* arg){ //Fonction qui va publier le message sur le fifo toutes les "intervalle" secondes
+	Echo* arg1 = (Echo*)arg;
+	float elapsed;
+	clock_t start = clock(), stop = clock();
+	while(arg1->test == 0){
+		//Gestion du temps
+		stop = clock();
+		elapsed = ((float)stop - start)/(CLOCKS_PER_SEC);
+		if(elapsed>arg1->intervalle){  
+			start = stop;
+			lseek(arg1->fd, 0, SEEK_END);
+			printf("envoi\n");
+			write(arg1->fd, arg1->msg, BUFFSIZE);  //On écrit le message dans le fifo
+		}
+	}
+	pthread_exit(NULL);
+}
+
+void* testoff(void* arg){  //fonction qui va regarder si l'utilisateur entre la touche permettant d'arrêter le programme
+	Echo* arg1 = (Echo*)arg;
+	int fd = open("../gestion_scanf.fifo",O_RDONLY);
+	char* buff = malloc(BUFFSIZE*sizeof(char));
+	while(arg1->test == 0){ 
+		read(fd, buff, BUFFSIZE);
+		if(strcmp(buff,"q<-1>")==0){   //On regarde si l'utilisateur appuie sur la touche "q<-1>"
+			arg1->test = 1;
+		}
+	}
+	free(buff);
+	pthread_exit(NULL);
+}
+
+int main(int argc, char** argv){
+
+	//Affichage des instructions s'il n'y a pas le bon nombre d'arguments
+	if(argc != 6 && argc!=8 ){
+		usageEcho();
+		return -1;
+	}
+	
+	// Initialisations
+	Node* nodeEcho = creerNode(argv[0]);
+	float intervalle = 1;
+	char* publish=malloc(BUFFSIZE*sizeof(char)), *msg=malloc(BUFFSIZE*sizeof(char)), *buff = malloc(BUFFSIZE*sizeof(char));
+
+	//Lecture des arguments du main
+	if((testEcho(argc,argv, publish, msg, &intervalle, nodeEcho))!=0){printf("Erreur lors de la lecture des arguments\n");}
+	
+	// Ouverture du fifo
+	int fd = open(publish, O_WRONLY);
+
+	//Création de la variable de type Echo
+	Echo arg1 = {buff,msg,fd,intervalle,0};
+	
+	//Création des threads d'écriture et de vérification d'interruption
+	pthread_t t1, t2;
+	if((pthread_create(&t1, NULL, &echo, (void*)&arg1)) != 0){
+		perror("Erreur de création du thread 1");
+		return -1;
+	}
+	if((pthread_create(&t2, NULL, &testoff, (void*)&arg1)) != 0){
+		perror("Erreur de création du thread 2");
+		return -1;
+	}
+	
+	// Attente mutuelle
+	if((pthread_join(t2, NULL)) != 0){ //Si l'utilisateur appuie sur 'q', les deux threads s'arrêtent
+		perror("Erreur d'interraction des threads");
+		return -1;
+	}
+
+  	// Nettoyage
+	supprimerNode(nodeEcho);
+	free(publish);
+	free(msg);
+	free(buff);
+	printf("nodeEcho terminé\n");
+
+	return 0;
+}

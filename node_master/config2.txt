@@ -1,0 +1,7 @@
+node: simu
+  bin: ./node_simu
+  args: --map fastsim/envs/cuisine.pbm --init-pos 300 300
+  listen: commande <- command.fifo
+node: telecmd
+  bin: ./node_tele
+  publish: commande_out -> command.fifo
