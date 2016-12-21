@@ -21,6 +21,8 @@ Components:
   - node_master: node leading the program's behavior
   - node_simu: simulation of a 2D-robot controlled through the keyboard
   - node_tele: node writing keyboard commands to a port
+  
+Compilation : every makefile compiles all of the elements in the same folder, or in the sub-folders
 
 
 
