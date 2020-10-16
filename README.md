@@ -1,6 +1,6 @@
 # Micro-ROS
 
-Micro version of ROS, which manages the communication between executable files
+Middleware prototype, for managing the communication between different executable files
 
 Language : C
 
